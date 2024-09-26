@@ -1,0 +1,23 @@
+notify_success_dev:
+  stage: notify
+  image: harbor.yzygs.com/infrastructure/curl:latest
+  script:
+    - env
+    - curl https://qyapi.weixin.qq.com/cgi-bin/webhook/send\?key\=d92c8809-f163-4d3c-a08c-03827e5cb75b -H Content-Type:application/json -d "{\"msgtype\":\"markdown\", \"markdown\":{\"content\":\"上线通知 \n >项目:${CI_PROJECT_NAME} \n >分支:${CI_COMMIT_REF_NAME}\n >提交号:${CI_COMMIT_SHA:0:8}\n >创建人:${GITLAB_USER_NAME}\n <font color=\\\"info\\\"> 上线成功</font>\"}}"
+  only:
+    - dev
+    - master
+    - tags
+  when: on_success
+
+
+notify_failed_dev:
+  stage: notify
+  image: harbor.yzygs.com/infrastructure/curl:latest
+  script:
+    - curl https://qyapi.weixin.qq.com/cgi-bin/webhook/send\?key\=d92c8809-f163-4d3c-a08c-03827e5cb75b -H Content-Type:application/json -d "{\"msgtype\":\"markdown\", \"markdown\":{\"content\":\"上线通知 \n >项目:${CI_PROJECT_NAME} \n >分支:${CI_COMMIT_REF_NAME}\n >提交号:${CI_COMMIT_SHA:0:8}\n >创建人:${GITLAB_USER_NAME}\n <font color=\\\"warning\\\"> 上线失败</font>\"}}"
+  only:
+    - dev
+    - master
+    - tags
+  when: on_failure

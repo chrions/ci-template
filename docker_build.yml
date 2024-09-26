@@ -1,0 +1,96 @@
+build_image:
+  stage: package
+  image: harbor.yzygs.com/infrastructure/slim
+  script:
+    - env
+    - test "$CI_COMMIT_TAG" && IMAGE_TAG=${CI_COMMIT_TAG} || IMAGE_TAG=${CI_COMMIT_BRANCH}-${CI_COMMIT_SHORT_SHA}
+    - echo "使用${CI_PROJECT_NAME} ${CI_COMMIT_REF_NAME} ${IMAGE_TAG} 构建镜像"
+    - ls -l
+    - images=$(cat Dockerfile | grep FROM | awk '{print $2}')
+    - echo $images
+    - |
+      for image in $images; do
+        docker pull "$image"
+      done
+    - IMAGE_FULL_NAME=${DOCKER_REGISTER_ENDPOINT}/${CI_PROJECT_ROOT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}
+    # - IMAGE_SLIM_NAME=${DOCKER_REGISTER_ENDPOINT}/${CI_PROJECT_ROOT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}-slim
+    - echo ${IMAGE_FULL_NAME}
+    # - echo ${IMAGE_SLIM_NAME}
+    - docker build -t ${IMAGE_FULL_NAME} .
+    # 内嵌默认保留路径
+    - |
+      echo "生成项目默认的保留路径"
+      cat <<EOF > slim_include_paths.txt
+      /home
+      /usr/share/nginx
+      /usr/sbin/nginx
+      /usr/lib
+      /etc/nginx
+      /etc/passwd
+      /etc/group
+      /etc/ssl
+      /var/cache/nginx
+      /usr/local/openjdk-11/bin
+      /usr/local/openjdk-11/lib
+      /usr/local/openjdk-11/conf/security
+      /var/log/nginx/error.log
+      /lib
+      EOF
+    - cat slim_include_paths.txt
+    # 合并project_paths.txt 到 slim_include_paths.txt
+    - |
+      if [ -f project_paths.txt ]; then
+        echo "project_paths.txt 存在，追加的地址为:"
+        cat project_paths.txt
+        cat project_paths.txt >> slim_include_paths.txt
+      else
+        echo "路径配置文件project_paths.txt 不存在，跳过"
+      fi
+
+    # 打印 slim_include_paths.txt 的内容
+    # - echo "slim_include_paths.txt 的内容:"
+    # - cat slim_include_paths.txt
+    # - slim build --http-probe=false --tag ${IMAGE_SLIM_NAME}
+    #   --include-path-file slim_include_paths.txt
+    #   ${IMAGE_FULL_NAME}
+
+    - docker login ${DOCKER_REGISTER_ENDPOINT} -u ${DOCKER_REGISTER_USERNAME} -p ${DOCKER_REGISTER_PASSWORD}
+    - docker push ${IMAGE_FULL_NAME}
+    # - docker push ${IMAGE_SLIM_NAME}
+  allow_failure: false
+  interruptible: true
+# build_image_aliyun:
+#   stage: package
+#   image: yzy-acr-registry-vpc.cn-beijing.cr.aliyuncs.com/infrastructure/docker:24.0.2-alpine3.18
+#   script:
+#     - |-
+#         env
+#         PROJECT_NAME=${CI_PROJECT_NAME}
+#         IMAGE_TAG=${CI_COMMIT_TAG}
+#         echo ${PROJECT_NAME}
+#         echo ${IMAGE_TAG}
+
+#         # 设置项目名称和进行名称
+#         # 对于非tag的镜像，它们的项目名称为${CI_PROJECT_NAME}-branch，${PROJECT_NAME}-${CI_COMMIT_SHORT_SHA}
+#         # 对于tag的镜像，它们的项目名称为${CI_PROJECT_NAME}，IMAGE_TAG为${CI_COMMIT_TAG}
+#         if [[ "${CI_COMMIT_TAG}" == "" && "${CI_COMMIT_BRANCH}" != "" ]]; then
+#           PROJECT_NAME="${CI_PROJECT_NAME}-branch"
+#           IMAGE_TAG="${CI_COMMIT_BRANCH}-${CI_COMMIT_SHORT_SHA}"
+#         fi
+
+#         echo "使用${PROJECT_NAME} ${IMAGE_TAG} 构建镜像"
+#         ls -l
+#         sed -i 's/harbor.yzygs.com/yzy-acr-registry-vpc.cn-beijing.cr.aliyuncs.com/g' Dockerfile
+#         images=$(cat Dockerfile|grep FROM|awk  '{print $2}')
+#         echo $images
+#         for image in $images; do
+#           docker pull "$image"
+#         done
+
+#         IMAGE_FULL_NAME=yzy-acr-registry-vpc.cn-beijing.cr.aliyuncs.com/${CI_PROJECT_ROOT_NAMESPACE}/${PROJECT_NAME}:${IMAGE_TAG}
+#         echo ${IMAGE_FULL_NAME}
+#         docker build -t ${IMAGE_FULL_NAME} .
+#   allow_failure: true
+#   interruptible: true
+#   tags:
+#     - aliyun

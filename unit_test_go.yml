@@ -1,0 +1,17 @@
+go-test:
+  stage: test
+  image: harbor.yzygs.com/infrastructure/golang:1.22.2-alpine3.19
+  script:
+    - go env -w GOPROXY="http://goproxy.yzygs.com,https://goproxy.cn,direct"
+    - go env -w GO111MODULE=on
+    - go env
+    - CGO_ENABLED=0 go test -v ./...  -coverprofile=coverage.txt -covermode count
+    - go install github.com/boumenot/gocover-cobertura@latest
+    - gocover-cobertura < coverage.txt > coverage.xml
+  allow_failure: false
+  interruptible: true
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml

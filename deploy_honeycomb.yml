@@ -1,0 +1,15 @@
+#在项目中田间变量 HONEYCOMB_DEPLOY_URL
+deploy_honeycomb:
+  stage: deploy
+  image: harbor.yzygs.com/infrastructure/curl:8.2.1
+  needs:
+    - build_image
+  script:
+    - env
+    - test "$CI_COMMIT_TAG" && IMAGE_TAG=${CI_COMMIT_TAG} || IMAGE_TAG=${CI_COMMIT_BRANCH}-${CI_COMMIT_SHORT_SHA}
+    - echo "使用${CI_PROJECT_NAME} ${CI_COMMIT_REF_NAME} ${IMAGE_TAG} 部署"
+    - IMAGE_FULL_NAME=${DOCKER_REGISTER_ENDPOINT}/${CI_PROJECT_ROOT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}
+    - echo ${IMAGE_FULL_NAME}
+    - curl -v ${HONEYCOMB_DEPLOY_URL}${IMAGE_FULL_NAME}
+  allow_failure: false
+  interruptible: true
